@@ -1492,6 +1492,8 @@ a {
 
 .mobile-brand {
   display: none;
+  justify-content: center;
+  align-items: center;
 }
 
 @media (max-width: 1080px) {

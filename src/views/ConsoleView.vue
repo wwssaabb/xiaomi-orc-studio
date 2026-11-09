@@ -206,6 +206,12 @@ async function run(): Promise<void> {
   }
 }
 
+function previewImage(): void {
+  preview.value = source.value?.dataUrl
+}
+
+
+
 onMounted(async () => {
   window.addEventListener('paste', onPaste)
   try {
@@ -282,7 +288,7 @@ onBeforeUnmount(() => {
             </template>
             <template v-else>
               <div class="preview-wrap">
-                <img v-if="source.kind === 'image'" :src="source.dataUrl" :alt="source.name" />
+                <img v-if="source.kind === 'image'" :src="source.dataUrl" :alt="source.name" @click="previewImage" />
                 <div v-else class="pdf-cover">
                   <AppIcon name="file" :size="52" :stroke-width="1.2" />
                   <strong style="font-size: 14px">{{ source.name }}</strong>
