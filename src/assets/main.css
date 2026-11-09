@@ -490,6 +490,17 @@ a {
   align-items: start;
 }
 
+/* PC 端左右并排对照：图片固定宽度，结果自动撑余宽 */
+.workspace.compare {
+  grid-template-columns: 340px 1fr;
+  gap: 16px;
+}
+
+.workspace.compare .image-side {
+  width: 340px;
+  max-width: 340px;
+}
+
 .workspace > * {
   min-width: 0;
 }
@@ -593,7 +604,7 @@ a {
 .dropzone.has-preview {
   padding: 0;
   border-style: solid;
-  background: #0d0f12;
+  background: var(--surface-2);
 }
 
 .dropzone.dragging {
@@ -1463,19 +1474,27 @@ a {
   gap: 9px;
   padding: 11px 14px;
   border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  animation: toast-in 0.2s ease;
+}
+
+[data-theme='dark'] .toast {
   background: #1d2025;
   color: #fff;
-  font-size: 13px;
-  box-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.6);
-  animation: toast-in 0.2s ease;
 }
 
 .toast.error {
   background: var(--danger);
+  color: #fff;
 }
 
 .toast.success {
   background: #147a3f;
+  color: #fff;
 }
 
 @keyframes toast-in {
@@ -1641,4 +1660,101 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* 输入图片预览弹层 */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: rgba(17, 20, 25, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--ink);
+}
+
+.preview-overlay .preview-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface);
+}
+
+.preview-overlay .preview-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.preview-overlay .preview-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 图片查看器（自控缩放/拖拽/点击退出） */
+.preview-overlay .preview-viewer {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+  touch-action: none;
+}
+
+.preview-overlay .preview-image {
+  max-width: none;
+  max-height: none;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  background: var(--surface);
+  object-fit: contain;
+  transform-origin: 0 0;
+  will-change: transform;
+  cursor: grab;
+}
+
+.preview-overlay .preview-image:active,
+.preview-overlay .preview-image[cursor='grabbing'] {
+  cursor: grabbing;
+}
+
+.preview-overlay .preview-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  position: relative;
+}
+
+.preview-overlay .preview-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  z-index: 5;
+}
+
+.preview-overlay .preview-close:active {
+  transform: scale(0.92);
+}
+
+.preview-overlay[hidden] {
+  display: none !important;
 }

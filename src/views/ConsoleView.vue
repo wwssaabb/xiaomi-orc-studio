@@ -41,6 +41,19 @@ const error = ref('')
 const result = ref<RunResult | null>(null)
 const elapsed = ref(0)
 const dragging = ref(false)
+const previewOpen = ref(false)
+const viewerScale = ref(1)
+const viewerX = ref(0)
+const viewerY = ref(0)
+const viewerDragging = ref(false)
+const viewerPinching = ref(false)
+const viewerStartX = ref(0)
+const viewerStartY = ref(0)
+const viewerPinchStartDist = ref(0)
+const viewerPinchStartScale = ref(1)
+const viewerPinchStartCenterX = ref(0)
+const viewerPinchStartCenterY = ref(0)
+const imgEl = ref<HTMLImageElement | null>(null)
 const samples = ref<SampleItem[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const cameraInput = ref<HTMLInputElement | null>(null)
@@ -206,8 +219,119 @@ async function run(): Promise<void> {
   }
 }
 
-function previewImage(): void {
-  preview.value = source.value?.dataUrl
+function openPreview(): void {
+  if (!source.value) return
+  previewOpen.value = true
+  viewerScale.value = 1
+  viewerX.value = 0
+  viewerY.value = 0
+}
+
+function closePreview(): void {
+  previewOpen.value = false
+  viewerScale.value = 1
+  viewerX.value = 0
+  viewerY.value = 0
+}
+
+function onViewerWheel(event: WheelEvent): void {
+  event.stopPropagation()
+  event.preventDefault()
+  const delta = -Math.sign(event.deltaY)
+  const step = 0.1
+  let next = viewerScale.value + (delta > 0 ? step : -step)
+  next = Math.min(Math.max(next, 0.5), 4)
+  const rect = imgEl.value?.getBoundingClientRect() ?? (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const cx = event.clientX - rect.left
+  const cy = event.clientY - rect.top
+  viewerX.value += cx * (1 - next / viewerScale.value)
+  viewerY.value += cy * (1 - next / viewerScale.value)
+  viewerScale.value = next
+}
+
+function getTouchCenter(event: TouchEvent): { x: number; y: number } {
+  const { touches } = event
+  let x = 0
+  let y = 0
+  for (let i = 0; i < touches.length; i++) {
+    x += touches[i].clientX
+    y += touches[i].clientY
+  }
+  return { x: x / touches.length, y: y / touches.length }
+}
+
+function getTouchDistance(event: TouchEvent): number {
+  const { touches } = event
+  if (touches.length < 2) return 0
+  const dx = touches[0].clientX - touches[1].clientX
+  const dy = touches[0].clientY - touches[1].clientY
+  return Math.hypot(dx, dy)
+}
+
+function onViewerMoveStart(event: MouseEvent | TouchEvent): void {
+  if ('touches' in event && event.touches.length >= 2) {
+    viewerPinching.value = true
+    viewerDragging.value = false
+    const dist = getTouchDistance(event as TouchEvent)
+    const center = getTouchCenter(event as TouchEvent)
+    viewerPinchStartDist.value = dist
+    viewerPinchStartScale.value = viewerScale.value
+    viewerPinchStartCenterX.value = center.x
+    viewerPinchStartCenterY.value = center.y
+    document.addEventListener('touchmove', onViewerMove, { passive: false })
+    document.addEventListener('touchend', onViewerMoveEnd)
+    document.addEventListener('touchcancel', onViewerMoveEnd)
+    return
+  }
+
+  viewerDragging.value = true
+  viewerPinching.value = false
+  const point = 'touches' in event ? event.touches[0] : event
+  viewerStartX.value = point.clientX - viewerX.value
+  viewerStartY.value = point.clientY - viewerY.value
+  if ('touches' in event) {
+    document.addEventListener('touchmove', onViewerMove, { passive: false })
+    document.addEventListener('touchend', onViewerMoveEnd)
+    document.addEventListener('touchcancel', onViewerMoveEnd)
+  } else {
+    document.addEventListener('mousemove', onViewerMove)
+    document.addEventListener('mouseup', onViewerMoveEnd)
+  }
+}
+
+function onViewerMove(event: MouseEvent | TouchEvent): void {
+  if (viewerPinching.value && 'touches' in event && event.touches.length >= 2) {
+    event.preventDefault()
+    const dist = getTouchDistance(event)
+    const center = getTouchCenter(event)
+    const scale = dist / Math.max(viewerPinchStartDist.value, 1)
+    let next = viewerPinchStartScale.value * scale
+    next = Math.min(Math.max(next, 0.5), 4)
+
+    const rect = imgEl.value?.getBoundingClientRect() ?? (event.currentTarget as HTMLElement).getBoundingClientRect()
+    const cx = center.x - rect.left
+    const cy = center.y - rect.top
+    viewerX.value += cx * (1 - next / viewerScale.value)
+    viewerY.value += cy * (1 - next / viewerScale.value)
+    viewerScale.value = next
+    return
+  }
+
+  if (!viewerDragging.value) return
+  event.preventDefault()
+  const point = 'touches' in event ? event.touches[0] : event
+  viewerX.value = point.clientX - viewerStartX.value
+  viewerY.value = point.clientY - viewerStartY.value
+}
+
+function onViewerMoveEnd(): void {
+  viewerDragging.value = false
+  viewerPinching.value = false
+  document.removeEventListener('mousemove', onViewerMove)
+  document.removeEventListener('mouseup', onViewerMoveEnd)
+  document.removeEventListener('touchmove', onViewerMove)
+  document.removeEventListener('touchend', onViewerMoveEnd)
+  document.removeEventListener('touchcancel', onViewerMoveEnd)
 }
 
 
@@ -288,7 +412,14 @@ onBeforeUnmount(() => {
             </template>
             <template v-else>
               <div class="preview-wrap">
-                <img v-if="source.kind === 'image'" :src="source.dataUrl" :alt="source.name" @click="previewImage" />
+                <img
+                  v-if="source.kind === 'image'"
+                  :src="source.dataUrl"
+                  :alt="source.name"
+                  class="input-thumb"
+                  @click="openPreview"
+                  draggable="false"
+                />
                 <div v-else class="pdf-cover">
                   <AppIcon name="file" :size="52" :stroke-width="1.2" />
                   <strong style="font-size: 14px">{{ source.name }}</strong>
@@ -454,5 +585,43 @@ onBeforeUnmount(() => {
     </div>
 
     <input ref="cameraInput" type="file" accept="image/*" capture="environment" hidden @change="onPick" />
+
+    <!-- 图片查看器：缩放、拖拽、点击背景或 ESC 退出 -->
+    <div
+      v-if="previewOpen && source?.kind === 'image'"
+      class="preview-overlay"
+      @click.self="closePreview"
+      @keydown.esc="closePreview"
+      tabindex="0"
+    >
+      <div class="preview-header">
+        <div class="preview-title">{{ source.name }}</div>
+        <div class="preview-meta">{{ (source.size / 1024).toFixed(1) }} KB</div>
+        <button class="preview-close" title="退出查看" @click="closePreview"><AppIcon name="close" :size="18" /></button>
+      </div>
+      <div
+        class="preview-viewer"
+        @wheel="onViewerWheel"
+        @mousedown="onViewerMoveStart"
+        @mouseup="onViewerMoveEnd"
+        @mouseleave="onViewerMoveEnd"
+        @touchstart="onViewerMoveStart"
+        @touchmove="onViewerMove"
+        @touchend="onViewerMoveEnd"
+        @touchcancel="onViewerMoveEnd"
+      >
+        <img
+          ref="imgEl"
+          class="preview-image"
+          :src="source.dataUrl"
+          :alt="source.name"
+          :style="{
+            transform: `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`,
+            cursor: viewerDragging ? 'grabbing' : 'grab'
+          }"
+          draggable="false"
+        />
+      </div>
+    </div>
   </div>
 </template>
