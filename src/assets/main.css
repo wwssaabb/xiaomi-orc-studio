@@ -273,7 +273,8 @@ a {
 
 .page {
   width: 100%;
-  max-width: 1320px;
+  /* max-width: 1320px; */
+  max-width: 1520px;
   margin: 0 auto;
   padding: 10px 30px 40px;
 }
@@ -503,6 +504,10 @@ a {
 
 .workspace > * {
   min-width: 0;
+}
+
+.workspace section.card + section, .workspace div.result-card {
+  height: 100%;
 }
 
 .segmented {

@@ -544,7 +544,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section>
+      <section style="height: 100%">
         <div v-if="running" class="card result-card">
           <div class="card-head">
             <div class="card-title">识别结果</div>
