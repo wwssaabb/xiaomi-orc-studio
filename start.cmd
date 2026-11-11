@@ -3,30 +3,54 @@ setlocal
 cd /d "%~dp0"
 title Xiaomi-OCR Studio
 
+rem Prefer the project venv (has all engine deps), then validate any other
+rem python on PATH - WindowsApps stubs and broken installs are rejected.
 set "PY="
-where python >nul 2>nul && set "PY=python"
+if exist "Xiaomi-OCR-0\skills\xiaomi-ocr\.venv\Scripts\python.exe" set "PY=Xiaomi-OCR-0\skills\xiaomi-ocr\.venv\Scripts\python.exe"
 if not defined PY if exist "..\Xiaomi-OCR-0\skills\xiaomi-ocr\.venv\Scripts\python.exe" set "PY=..\Xiaomi-OCR-0\skills\xiaomi-ocr\.venv\Scripts\python.exe"
-if not defined PY if exist "Xiaomi-OCR-0\skills\xiaomi-ocr\.venv\Scripts\python.exe" set "PY=Xiaomi-OCR-0\skills\xiaomi-ocr\.venv\Scripts\python.exe"
 
 if not defined PY (
-  echo [x] æ‰¾ä¸åˆ° Pythonã€‚è¯·å®‰è£… Python 3.10+ å¹¶åŠ å…¥ PATHã€‚
+  for %%C in (python py) do (
+    if not defined PY (
+      %%C --version >nul 2>nul && set "PY=%%C"
+    )
+  )
+)
+
+if not defined PY (
+  echo [x] ÕÒ²»µ½¿ÉÓÃµÄ Python 3.10+¡£
+  echo     Çë°²×° Python »ò°Ñ Xiaomi-OCR-0 ²Ö¿â·ÅÔÚ±¾ÏîÄ¿Í¬¼¶Ä¿Â¼¡£
   pause
   exit /b 1
 )
 
+"%PY%" --version >nul 2>nul
+if errorlevel 1 (
+  echo [x] Python ½âÊÍÆ÷ÎŞ·¨ÔËĞĞ: %PY%
+  pause
+  exit /b 1
+)
+echo [*] Python: %PY%
+
 if not exist "node_modules" (
-  echo [*] é¦–æ¬¡è¿è¡Œï¼Œå®‰è£…å‰ç«¯ä¾èµ–...
+  echo [*] Ê×´ÎÔËĞĞ£¬°²×°Ç°¶ËÒÀÀµ...
   call npm install --no-audit --no-fund
-  if errorlevel 1 ( echo [x] ä¾èµ–å®‰è£…å¤±è´¥ã€‚ & pause & exit /b 1 )
+  if errorlevel 1 ( echo [x] ÒÀÀµ°²×°Ê§°Ü¡£ & pause & exit /b 1 )
 )
 
 if not exist "dist\index.html" (
-  echo [*] æ„å»ºå‰ç«¯...
+  echo [*] ¹¹½¨Ç°¶Ë...
   call npm run build
-  if errorlevel 1 ( echo [x] æ„å»ºå¤±è´¥ã€‚ & pause & exit /b 1 )
+  if errorlevel 1 ( echo [x] ¹¹½¨Ê§°Ü¡£ & pause & exit /b 1 )
 )
 
-echo [*] å¯åŠ¨æœ¬åœ°ç½‘å…³: http://127.0.0.1:8787
+echo [*] Æô¶¯±¾µØÍø¹Ø: http://127.0.0.1:8787
 start "" http://127.0.0.1:8787
 "%PY%" server\app.py
+if errorlevel 1 (
+  echo.
+  echo [x] Íø¹ØÆô¶¯Ê§°Ü£¬Çë¼ì²éÉÏ·½´íÎóĞÅÏ¢¡£
+  pause
+  exit /b 1
+)
 pause
